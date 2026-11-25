@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Class Rewards</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#4f46e5">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1f2430;--mute:#6b7280;--line:#e5e1d8;--acc:#4f46e5;--acc2:#e8e6fd;--good:#16a34a;--warn:#d97706;--bad:#dc2626;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161c;--card:#1d2029;--ink:#eceef4;--mute:#9aa1b2;--line:#2c303c;--acc:#8b85ff;--acc2:#2a2850;--good:#4ade80;--warn:#fbbf24;--bad:#f87171}}
+:root[data-theme="dark"]{--bg:#14161c;--card:#1d2029;--ink:#eceef4;--mute:#9aa1b2;--line:#2c303c;--acc:#8b85ff;--acc2:#2a2850;--good:#4ade80;--warn:#fbbf24;--bad:#f87171}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:24px;margin:0}h2{font-size:18px;margin:18px 0 8px}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.seg{display:flex;gap:6px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
+nav button,.btn,.seg button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer;font:inherit}
+nav button.on,.btn.pri,.seg button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.pick{cursor:pointer}.pick.sel{outline:3px solid var(--acc)}
+.mute{color:var(--mute);font-size:14px}
+.bar{height:10px;background:var(--acc2);border-radius:99px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--acc);border-radius:99px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.chip{border:1px solid var(--line);background:var(--acc2);color:var(--ink);padding:7px 12px;border-radius:10px;cursor:pointer;font:inherit}
+.chip:hover{border-color:var(--acc)}.chip:disabled{opacity:.4;cursor:not-allowed}.chip.shop{background:var(--card)}
+.rank{display:grid;gap:8px}.big{font-size:20px;font-weight:700}
+textarea,input,select{width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+textarea{min-height:130px}select{width:auto}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.two{grid-template-columns:1fr}}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--acc2)}
+.chip.bad{background:var(--card);border-color:var(--bad);color:var(--bad)}
+.pend{color:var(--warn);font-weight:600}.done{color:var(--good);font-weight:600}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>🏆 Class Rewards</h1><div class="seg" id="seg"></div><button class="btn" id="theme">🌓</button></header>
+<nav id="nav"></nav>
+<div id="view"></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var KEY='classRewards_v2';
+var N3=[];
+var N4=[];
+function mk(c,names){return{teams:['Team 1','Team 2','Team 3','Team 4','Team 5'],goal:1300,students:names.map(function(n,i){return{id:c+'_'+i,name:n,team:-1,earned:0,spent:0,log:[]}})}}
+function fresh(){return{cur:'G7-3',classes:{'G7-3':mk('a',N3),'G7-4':mk('b',N4)},reds:[],
+actions:'Kindness | 1 | b\nRespect | 1 | b\nParticipation | 1 | b\nHelping a classmate | 1 | b\nHomework done | 1 | a\nGreat effort | 1 | a\nQuiz improvement | 2 | a\nExcellent work | 2 | a',
+shop:'Stickers | 5\nEraser | 5\nPen | 8\nTeacher’s helper for a day | 10\nSticky notes | 12\nNotebook | 15\nButterfly hair clip | 15\nKeychain | 18\nFan | 20\nStationery set | 25\nNail set | 25\nNecklace | 28\nPersonalized bag | 30'}}
+function load(){try{var r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return fresh()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+var BAD='Talking out of turn\nDisrespect\nNo homework\nLate to class\nUnprepared\nPhone use\nOff task';
+var S=load(),tab='board',sel=null,tsel=null,bsel='';
+function norm(){S.incidents=S.incidents||[];S.bad=S.bad||BAD;S.reds=S.reds||[];if(typeof S.starHour!=='number')S.starHour=8;Object.keys(S.classes).forEach(function(k){var c=S.classes[k];c.goalName=c.goalName||'Pizza party';c.goalIcon=c.goalIcon||'🍕';c.tlog=c.tlog||[]})}
+norm();
+function C(){return S.classes[S.cur]}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function parse(t){return t.split('\n').map(function(l){return l.split('|').map(function(x){return x.trim()})}).filter(function(p){return p[0]})}
+function acts(){return parse(S.actions).map(function(p){return{l:p[0],p:+p[1]||1,t:p[2]==='a'?'a':'b'}})}
+function shop(){return parse(S.shop).map(function(p){return{l:p[0],c:+p[1]||5}})}
+function tier(c){return c<=10?'Small':c<=20?'Medium':'Big'}
+function bal(s){return s.earned-s.spent}
+function stu(id){return C().students.filter(function(s){return s.id===id})[0]}
+function tbonus(i){return C().tlog.filter(function(x){return x.team===i}).reduce(function(a,x){return a+x.p},0)}
+function tpts(i){return C().students.filter(function(s){return s.team===i}).reduce(function(a,s){return a+s.earned},0)+tbonus(i)}
+function tmem(i){return C().students.filter(function(s){return s.team===i})}
+function total(){return C().students.reduce(function(a,s){return a+s.earned},0)+C().tlog.reduce(function(a,x){return a+x.p},0)}
+function tname(s){return s.team>=0?C().teams[s.team]:'No team'}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.className='toast show';clearTimeout(toast.h);toast.h=setTimeout(function(){t.className='toast'},1700)}
+function earn(s,l,p){s.earned+=p;s.log.push({l:l,p:p,t:'e',ts:Date.now()})}
+function weekStart(ms){var d=new Date(ms);d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime()}
+function cutoff(ws){var d=new Date(ws);d.setDate(d.getDate()+4);d.setHours(S.starHour,0,0,0);return d.getTime()}
+function hourLabel(){var h=S.starHour;return (h%12||12)+':00 '+(h<12?'AM':'PM')}
+function starRank(c,from,to){return c.students.map(function(s){var p=s.log.reduce(function(a,l){return a+((l.t==='e'&&l.ts&&l.ts>=from&&l.ts<=to)?l.p:0)},0);return{s:s,p:p}}).filter(function(x){return x.p>0}).sort(function(a,b){return b.p-a.p})}
+function starNames(r){var top=r[0].p;return r.filter(function(x){return x.p===top}).map(function(x){return esc(x.s.name)}).join(' & ')}
+function starCard(){
+ var c=C(),now=Date.now(),ws=weekStart(now),co=cutoff(ws),locked=now>=co;
+ var r=starRank(c,ws,Math.min(now,co)),pws=weekStart(ws-1),pr=starRank(c,pws,cutoff(pws));
+ var h='<div class="card" style="margin-top:12px"><div class="row"><b>⭐ Star of the week · '+S.cur+'</b><span class="tag">'+(locked?'🔒 Locked':'Live')+'</span></div>';
+ if(r.length){var top=r[0].p,n=r.filter(function(x){return x.p===top}).length;
+  h+='<div class="big" style="margin-top:6px">'+starNames(r)+'</div><div class="mute">'+top+' points this week'+(n>1?' (tie)':'')+'</div>';
+  if(!locked&&r.length>n)h+='<div class="mute">Chasing: '+r.slice(n,n+2).map(function(x){return esc(x.s.name)+' ('+x.p+')'}).join(', ')+'</div>';
+ }else h+='<p class="mute" style="margin:6px 0 0">No points yet this week.</p>';
+ h+='<div class="mute" style="margin-top:6px">'+(locked?'Locked since Thursday '+hourLabel()+'. A new week starts on Sunday.':'Counts points from Sunday until Thursday '+hourLabel()+', then locks.')+'</div>';
+ if(pr.length)h+='<div class="mute">Last week’s star: '+starNames(pr)+' ('+pr[0].p+')</div>';
+ return h+'</div>';
+}
+
+function render(){
+ var tabs=[['board','📊 Board'],['students','🧑‍🎓 Students'],['teams','👥 Teams'],['shop','🎁 Gift shop'],['reds','📋 Redemptions'],['bad','⚠️ Behaviour log'],['settings','⚙️ Settings']];
+ document.getElementById('seg').innerHTML=Object.keys(S.classes).map(function(c){return '<button data-c="'+c+'" class="'+(S.cur===c?'on':'')+'">'+c+'</button>'}).join('');
+ var pend=S.reds.filter(function(r){return r.cls===S.cur&&r.status==='Pending'}).length;
+ document.getElementById('nav').innerHTML=tabs.map(function(t){return '<button data-t="'+t[0]+'" class="'+(tab===t[0]?'on':'')+'">'+t[1]+(t[0]==='reds'&&pend?' ('+pend+')':'')+'</button>'}).join('');
+ document.getElementById('view').innerHTML=({board:vBoard,students:vStudents,teams:vTeams,shop:vShop,reds:vReds,bad:vBad,settings:vSettings})[tab]();
+ if(tab==='settings')bindSettings();
+}
+
+function vBoard(){
+ var c=C(),t=total(),pct=Math.min(100,Math.round(t/c.goal*100));
+ var ts=c.teams.map(function(n,i){return{n:n,p:tpts(i),m:tmem(i).length}}).sort(function(a,b){return b.p-a.p});
+ var mx=Math.max(1,ts.length?ts[0].p:1);
+ var top=c.students.slice().sort(function(a,b){return b.earned-a.earned}).slice(0,5).filter(function(s){return s.earned>0});
+ var medals=['🥇','🥈','🥉','',''];
+ return '<div class="card"><div class="row"><b>'+esc(c.goalIcon)+' '+S.cur+' · '+esc(c.goalName)+'</b><span class="big">'+t+' / '+c.goal+'</span></div><div class="bar" style="height:18px"><i style="width:'+pct+'%"></i></div>'+(t>=c.goal?'<p>🎉 Goal reached! Time for the '+esc(c.goalName)+'!</p>':'<p class="mute" style="margin:6px 0 0">'+(c.goal-t)+' points to go</p>')+'</div>'
+ +starCard()+'<div class="two"><div><h2>Team ranking</h2><div class="rank">'+ts.map(function(x,i){return '<div class="card"><div class="row"><b>'+(medals[i]||'')+' '+esc(x.n)+'</b><span class="big">'+x.p+'</span></div><div class="mute">'+x.m+' members</div><div class="bar"><i style="width:'+Math.round(x.p/mx*100)+'%"></i></div></div>'}).join('')+'</div></div>'
+ +'<div><h2>Top 5 students</h2><div class="rank">'+(top.length?top.map(function(s,i){return '<div class="card"><div class="row"><b>'+(i+1)+'. '+esc(s.name)+'</b><span class="big">'+s.earned+'</span></div><div class="mute">'+esc(tname(s))+'</div></div>'}).join(''):'<p class="mute">Award some points to see the leaders.</p>')+'</div></div></div>';
+}
+
+function chips(list,attr,filt){return '<div class="chips">'+list.map(function(a,i){return filt(a)?'<button class="chip" '+attr+'="'+i+'">'+esc(a.l)+' +'+a.p+'</button>':''}).join('')+'</div>'}
+
+function vStudents(){
+ var c=C(),h='',s=sel&&stu(sel);
+ if(s){var A=acts(),sh=shop();
+  h+='<div class="card" style="margin-bottom:12px"><div class="row"><b class="big">'+esc(s.name)+'</b><span>⭐ Earned '+s.earned+' · 💰 Balance <b>'+bal(s)+'</b></span></div>'
+  +'<div class="row" style="margin-top:6px"><span class="mute">Team:</span><select data-ts="1"><option value="-1">No team</option>'+c.teams.map(function(n,i){return '<option value="'+i+'"'+(s.team===i?' selected':'')+'>'+esc(n)+'</option>'}).join('')+'</select></div>'
+  +'<h2>Behaviour</h2>'+chips(A,'data-aw',function(a){return a.t==='b'})
+  +'<h2 style="margin-top:0">Academics</h2>'+chips(A,'data-aw',function(a){return a.t==='a'})
+  +'<h2 style="margin-top:0">Gift shop</h2><div class="chips">'+sh.map(function(r,i){return '<button class="chip shop" data-buy="'+i+'" '+(bal(s)<r.c?'disabled':'')+'>'+esc(r.l)+' · '+r.c+'</button>'}).join('')+'</div>'
+  +'<h2 style="margin-top:0">Behaviour concerns <span class="mute">(log only, no points lost)</span></h2><div class="chips">'+parse(S.bad).map(function(b,i){return '<button class="chip bad" data-bad="'+i+'">'+esc(b[0])+'</button>'}).join('')+'</div>'+recent(s)
+  +'<button class="btn" data-undo="1">↩ Undo last</button> <span class="mute">'+(s.log.length?'Last: '+esc(s.log[s.log.length-1].l):'')+'</span></div>';
+ }else h+='<p class="mute">Tap a student to award points or buy a gift.</p>';
+ return h+'<div class="grid">'+c.students.map(function(x){return '<div class="card pick '+(x.id===sel?'sel':'')+'" data-s="'+x.id+'"><div class="row"><b>'+esc(x.name)+'</b><span>💰 '+bal(x)+'</span></div><div class="mute">'+esc(tname(x))+' · earned '+x.earned+'</div></div>'}).join('')+'</div>';
+}
+
+function recent(s){var L=S.incidents.filter(function(r){return r.sid===s.id});return L.length?'<div class="mute" style="margin-bottom:8px">⚠️ '+L.length+' logged · latest: '+esc(L[L.length-1].type)+' ('+esc(L[L.length-1].date)+')</div>':''}
+function vBad(){
+ var L=S.incidents.filter(function(r){return r.cls===S.cur}),cnt={};
+ L.forEach(function(r){cnt[r.sid]=(cnt[r.sid]||0)+1});
+ var withC=C().students.filter(function(s){return cnt[s.id]}).sort(function(a,b){return cnt[b.id]-cnt[a.id]});
+ var shown=L.filter(function(r){return !bsel||r.sid===bsel}).sort(function(a,b){return b.id-a.id});
+ return '<div class="row"><b>Filter by student</b><select data-bf="1"><option value="">All students</option>'+C().students.map(function(s){return '<option value="'+s.id+'"'+(bsel===s.id?' selected':'')+'>'+esc(s.name)+'</option>'}).join('')+'</select></div>'
+ +(withC.length?'<h2>Totals</h2><div class="chips">'+withC.map(function(s){return '<span class="tag">'+esc(s.name)+': '+cnt[s.id]+'</span>'}).join('')+'</div>':'')
+ +'<h2>Log</h2>'+(shown.length?'<div class="rank">'+shown.map(function(r){return '<div class="card"><div class="row"><b>'+esc(r.sname)+' · '+esc(r.type)+'</b><button class="btn" data-delinc="'+r.id+'">Delete</button></div><div class="mute">'+esc(r.date)+(r.note?' · '+esc(r.note):'')+'</div></div>'}).join('')+'</div>':'<p class="mute">Nothing logged. Log concerns from a student’s panel on the Students tab.</p>');
+}
+function vTeams(){
+ var c=C(),h='<p class="mute">Tap a team, then award points to the team itself or to every member.</p><div class="grid">'+c.teams.map(function(n,i){var b=tbonus(i);return '<div class="card pick '+(i===tsel?'sel':'')+'" data-g="'+i+'"><div class="row"><b>'+esc(n)+'</b><span class="big">'+tpts(i)+'</span></div><div class="mute">'+tmem(i).length+' members'+(b?' · incl. '+b+' team bonus':'')+'</div></div>'}).join('')+'</div>';
+ if(tsel!==null){var tl=c.tlog.filter(function(x){return x.team===tsel});
+  h+='<div class="card" style="margin-top:12px"><b class="big">'+esc(c.teams[tsel])+'</b>'
+  +'<h2>Award points to the team</h2><div class="mute">Counts for the team ranking and the class reward, not for any one student.</div>'+chips(acts(),'data-taw',function(){return true})
+  +'<div class="row" style="flex-wrap:nowrap;margin-bottom:12px"><input id="tcn" placeholder="Custom reason (optional)"><input id="tcp" type="number" min="1" value="1" style="width:80px"><button class="btn" data-tcustom="1">Award</button></div>'
+  +'<h2 style="margin-top:0">Or give every member the same points</h2><div class="mute">Each member earns them individually (they can spend them, and they count toward Star of the week).</div>'+chips(acts(),'data-gaw',function(){return true})
+  +'<button class="btn" data-tundo="1">↩ Undo last team award</button> <span class="mute">'+(tl.length?'Last: '+esc(tl[tl.length-1].l)+' +'+tl[tl.length-1].p:'')+'</span>'
+  +'<div class="mute" style="margin-top:8px">Members: '+(tmem(tsel).map(function(s){return esc(s.name)}).join(', ')||'none yet. Assign students on the Students tab or in Settings.')+'</div></div>'}
+ var un=c.students.filter(function(s){return s.team<0}).length;
+ return h+(un?'<p class="mute">'+un+' students have no team yet.</p>':'');
+}
+function vShop(){
+ var sh=shop();
+ return ['Small','Medium','Big'].map(function(t){return '<h2>'+t+'</h2><div class="grid">'+sh.filter(function(r){return tier(r.c)===t}).map(function(r){return '<div class="card"><b>'+esc(r.l)+'</b><div class="big">'+r.c+' pts</div></div>'}).join('')+'</div>'}).join('')+'<p class="mute">To buy: Students tab → tap a student → pick a gift.</p>';
+}
+
+function vReds(){
+ var L=S.reds.filter(function(r){return r.cls===S.cur}).sort(function(a,b){return (a.status==='Pending'?0:1)-(b.status==='Pending'?0:1)||b.id-a.id});
+ if(!L.length)return '<p class="mute">No purchases yet.</p>';
+ return '<div class="rank">'+L.map(function(r){var helper=/helper/i.test(r.item);
+  return '<div class="card"><div class="row"><b>'+esc(r.sname)+' · '+esc(r.item)+'</b><span class="'+(r.status==='Pending'?'pend':'done')+'">'+r.status+'</span></div><div class="mute">'+r.cost+' pts · bought '+esc(r.date)+'</div>'
+  +'<div class="row" style="margin-top:8px">'+(helper?'<label class="mute">Scheduled for <input type="date" data-sched="'+r.id+'" value="'+esc(r.sched||'')+'" style="width:auto"></label>':'<span></span>')
+  +(r.status==='Pending'?'<button class="btn pri" data-done="'+r.id+'">Mark done</button>':'<button class="btn" data-reopen="'+r.id+'">Reopen</button>')+'</div></div>'}).join('')+'</div>';
+}
+
+function vSettings(){
+ var c=C();
+ return '<p class="mute">Settings below apply to <b>'+S.cur+'</b> (teams, students, goal). Point actions and gift shop are shared by both classes.</p><div class="two">'
+ +'<div class="card"><b>Teams</b>'+c.teams.map(function(n,i){return '<div class="row" style="margin-top:8px;flex-wrap:nowrap"><input data-tn="'+i+'" value="'+esc(n)+'"><button class="btn" data-rmteam="'+i+'" title="Remove team"'+(c.teams.length<2?' disabled':'')+'>✕</button></div>'}).join('')+'<p style="margin:10px 0 0"><button class="btn" data-addteam="1">＋ Add team</button></p></div>'
+ +'<div class="card"><b>Final class reward</b><p class="mute">Reward name</p><input id="gn" value="'+esc(c.goalName)+'"><p class="mute">Icon (an emoji)</p><input id="gi" value="'+esc(c.goalIcon)+'" maxlength="4"><p class="mute">Points needed</p><input id="gt" type="number" value="'+c.goal+'"></div>'
+ +'<div class="card"><b>Star of the week</b><p class="mute">The star is the student with the most points earned from Sunday until Thursday at this hour (0 to 23, e.g. 8 = 8:00 AM). It then locks and resets on Sunday. Applies to both classes.</p><input id="sh" type="number" min="0" max="23" value="'+S.starHour+'"></div>'
+ +'<div class="card"><b>Students</b><p class="mute">One per line: Name, team number (optional). Points are kept.</p><textarea id="st">'+esc(c.students.map(function(s){return s.name+(s.team>=0?', '+(s.team+1):'')}).join('\n'))+'</textarea></div>'
+ +'<div class="card"><b>Point actions</b><p class="mute">Label | points | b (behaviour) or a (academic)</p><textarea id="ac">'+esc(S.actions)+'</textarea></div>'
+ +'<div class="card"><b>Gift shop</b><p class="mute">Item | cost. Up to 10 = Small, 11 to 20 = Medium, 21+ = Big</p><textarea id="sp">'+esc(S.shop)+'</textarea></div><div class="card"><b>Behaviour concerns list</b><p class="mute">One per line. These are log-only and do not remove points.</p><textarea id="bd">'+esc(S.bad)+'</textarea></div><div class="card"><b>Backup</b><p class="mute">Export saves everything (both classes) to a file. Import replaces all current data with a backup file.</p><button class="btn" id="ex">⬇ Export backup</button> <button class="btn" id="im">⬆ Import backup</button><input type="file" id="imf" accept=".json,application/json" style="display:none"></div></div>'
+ +'<p><button class="btn pri" id="sv">Save settings</button> <button class="btn" id="rs">Reset '+S.cur+' points</button></p><p class="mute">Data is saved in this browser on this device.</p>';
+}
+function applySettings(){
+ var c=C();
+ document.querySelectorAll('[data-tn]').forEach(function(el){c.teams[+el.dataset.tn]=el.value.trim()||('Team '+(+el.dataset.tn+1))});
+ c.goal=+document.getElementById('gt').value||1300;
+ c.goalName=document.getElementById('gn').value.trim()||'Class reward';
+ c.goalIcon=document.getElementById('gi').value.trim()||'🎁';
+ var sh=parseInt(document.getElementById('sh').value,10);S.starHour=(sh>=0&&sh<=23)?sh:8;
+ S.actions=document.getElementById('ac').value;S.shop=document.getElementById('sp').value;S.bad=document.getElementById('bd').value;
+ var old=c.students,ns=[];
+ document.getElementById('st').value.split('\n').forEach(function(l,i){var p=l.split(',');var n=p[0].trim();if(!n)return;var tm=parseInt(p[1],10);tm=(tm>=1&&tm<=c.teams.length)?tm-1:-1;
+  var e=old.filter(function(s){return s.name===n})[0];
+  if(e){e.team=tm;ns.push(e)}else ns.push({id:S.cur+'_n'+Date.now()+i,name:n,team:tm,earned:0,spent:0,log:[]})});
+ c.students=ns;if(!stu(sel))sel=null;
+}
+function bindSettings(){
+ document.getElementById('sv').onclick=function(){applySettings();save();toast('Saved ✓');render()};
+ document.getElementById('ex').onclick=function(){try{var b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='class-rewards-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();toast('Backup downloaded')}catch(e){toast('Export failed')}};
+ document.getElementById('im').onclick=function(){document.getElementById('imf').click()};
+ document.getElementById('imf').onchange=function(ev){var f=ev.target.files[0];if(!f)return;var fr=new FileReader();
+  fr.onload=function(){try{var d=JSON.parse(fr.result);if(!d.classes||!d.cur||!d.classes[d.cur])throw 1;
+   if(!confirm('Replace ALL current data with this backup?'))return;S=d;norm();sel=null;tsel=null;bsel='';save();toast('Backup imported ✓');render()}catch(e){toast('That file is not a valid backup')}};
+  fr.readAsText(f)};
+ document.getElementById('rs').onclick=function(){if(confirm('Reset all points and purchases for '+S.cur+'?')){C().students.forEach(function(s){s.earned=0;s.spent=0;s.log=[]});C().tlog=[];S.reds=S.reds.filter(function(r){return r.cls!==S.cur});save();toast('Reset');render()}};
+}
+
+function red(id){return S.reds.filter(function(r){return r.id===+id})[0]}
+document.addEventListener('click',function(e){
+ var el=e.target.closest('[data-c],[data-t],[data-s],[data-g],[data-aw],[data-gaw],[data-buy],[data-undo],[data-done],[data-reopen],[data-bad],[data-delinc],[data-addteam],[data-rmteam],[data-taw],[data-tcustom],[data-tundo]');if(!el)return;
+ var d=el.dataset,s=sel&&stu(sel),A=acts();
+ if(d.c){S.cur=d.c;sel=null;tsel=null;save();render()}
+ else if(d.t){tab=d.t;render()}
+ else if(d.s){sel=sel===d.s?null:d.s;render()}
+ else if(d.g!==undefined){tsel=tsel===+d.g?null:+d.g;render()}
+ else if(d.aw!==undefined&&s){var a=A[+d.aw];earn(s,a.l,a.p);save();toast('+'+a.p+' for '+s.name);render()}
+ else if(d.gaw!==undefined&&tsel!==null){var g=A[+d.gaw];tmem(tsel).forEach(function(x){earn(x,'Team: '+g.l,g.p)});save();toast('+'+g.p+' each for '+C().teams[tsel]);render()}
+ else if(d.buy!==undefined&&s){var r=shop()[+d.buy];if(bal(s)>=r.c){var id=Date.now();s.spent+=r.c;s.log.push({l:r.l,p:r.c,t:'b',rid:id});S.reds.push({id:id,cls:S.cur,sid:s.id,sname:s.name,item:r.l,cost:r.c,date:new Date().toLocaleDateString(),status:'Pending',sched:''});save();toast(s.name+' bought: '+r.l);render()}}
+ else if(d.undo&&s&&s.log.length){var l=s.log.pop();if(l.t==='e')s.earned-=l.p;else{s.spent-=l.p;S.reds=S.reds.filter(function(x){return x.id!==l.rid})}save();toast('Undone');render()}
+ else if(d.bad!==undefined&&s){var ty=parse(S.bad)[+d.bad][0],note=prompt('Add a note (optional):','');if(note===null)return;S.incidents.push({id:Date.now(),cls:S.cur,sid:s.id,sname:s.name,type:ty,note:note.trim(),date:new Date().toLocaleDateString()});save();toast('Logged: '+ty+' ('+s.name+')');render()}
+ else if(d.delinc){if(confirm('Delete this entry?')){S.incidents=S.incidents.filter(function(x){return x.id!==+d.delinc});save();render()}}
+ else if(d.taw!==undefined&&tsel!==null){var ta=A[+d.taw];C().tlog.push({team:tsel,l:ta.l,p:ta.p,ts:Date.now()});save();toast('+'+ta.p+' for '+C().teams[tsel]);render()}
+ else if(d.tcustom&&tsel!==null){var cp=parseInt(document.getElementById('tcp').value,10);if(!(cp>0)){toast('Enter points above 0');return}var cn=document.getElementById('tcn').value.trim();C().tlog.push({team:tsel,l:cn||'Team award',p:cp,ts:Date.now()});save();toast('+'+cp+' for '+C().teams[tsel]);render()}
+ else if(d.tundo&&tsel!==null){var tl2=C().tlog;for(var k=tl2.length-1;k>=0;k--){if(tl2[k].team===tsel){tl2.splice(k,1);break}}save();toast('Undone');render()}
+ else if(d.addteam){applySettings();var c=C();c.teams.push('Team '+(c.teams.length+1));save();render()}
+ else if(d.rmteam!==undefined){applySettings();save();var c2=C(),ti=+d.rmteam;if(c2.teams.length<2)return;if(confirm('Remove "'+c2.teams[ti]+'"? Its members become unassigned.')){c2.teams.splice(ti,1);c2.students.forEach(function(x){if(x.team===ti)x.team=-1;else if(x.team>ti)x.team-=1});c2.tlog=c2.tlog.filter(function(x){return x.team!==ti}).map(function(x){if(x.team>ti)x.team-=1;return x});tsel=null;save();render()}}
+ else if(d.done){red(d.done).status='Done';save();render()}
+ else if(d.reopen){red(d.reopen).status='Pending';save();render()}
+});
+document.addEventListener('change',function(e){
+ var t=e.target;
+ if(t.dataset.ts!==undefined&&sel){stu(sel).team=+t.value;save();render()}
+ else if(t.dataset.bf!==undefined){bsel=t.value;render()}
+ else if(t.dataset.sched){red(t.dataset.sched).sched=t.value;save()}
+});
+document.getElementById('theme').onclick=function(){var r=document.documentElement,dark=getComputedStyle(r).getPropertyValue('--bg').trim()==='#14161c';r.setAttribute('data-theme',dark?'light':'dark')};
+render();
+if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){navigator.serviceWorker.register('sw.js').catch(function(){})}
+</script>
+</body>
+</html>
