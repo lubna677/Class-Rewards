@@ -39,6 +39,18 @@ textarea{min-height:130px}select{width:auto}
 .tag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--acc2)}
 .chip.bad{background:var(--card);border-color:var(--bad);color:var(--bad)}
 .pend{color:var(--warn);font-weight:600}.done{color:var(--good);font-weight:600}
+.stage{position:relative;overflow:hidden;border-radius:18px;padding:36px 18px;text-align:center;color:#fff;min-height:420px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(160deg,#4f46e5,#7c3aed 55%,#db2777)}
+.stage:fullscreen{border-radius:0;padding:4vh 4vw}
+.sin{position:relative;z-index:1}
+.stage .fall{position:absolute;top:-10%;pointer-events:none;animation:fall linear infinite}
+@keyframes fall{from{top:-10%;transform:rotate(0)}to{top:110%;transform:rotate(360deg)}}
+.stage .tw{display:inline-block;animation:tw 1.6s ease-in-out infinite}
+@keyframes tw{50%{transform:scale(1.35) rotate(12deg);opacity:.7}}
+.stage .mini{font-size:clamp(16px,2.4vw,30px);letter-spacing:.06em;opacity:.95;margin:6px 0}
+.stage .sname{font-size:clamp(34px,8vw,110px);font-weight:800;line-height:1.1;margin:10px 0;text-shadow:0 4px 18px rgba(0,0,0,.3)}
+.stage .spts{font-size:clamp(18px,3vw,38px);font-weight:700;color:#fde68a}
+.stage .snote{font-size:clamp(18px,2.8vw,38px);margin:18px auto 8px;max-width:900px;font-style:italic}
+@media(prefers-reduced-motion:reduce){.stage .fall,.stage .tw{animation:none}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none}
 .toast.show{opacity:1}
 </style>
@@ -61,8 +73,10 @@ shop:'Stickers | 5\nEraser | 5\nPen | 8\nTeacher’s helper for a day | 10\nStic
 function load(){try{var r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return fresh()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 var BAD='Talking out of turn\nDisrespect\nNo homework\nLate to class\nUnprepared\nPhone use\nOff task';
+var DEDS='Talking out of turn | 1\nDisrespect | 2\nNo homework | 1\nLate to class | 1\nPhone use | 2';
+var HT='Wipe the board\nHand out materials\nCollect homework\nTidy the classroom';
 var S=load(),tab='board',sel=null,tsel=null,bsel='';
-function norm(){S.incidents=S.incidents||[];S.bad=S.bad||BAD;S.reds=S.reds||[];if(typeof S.starHour!=='number')S.starHour=8;Object.keys(S.classes).forEach(function(k){var c=S.classes[k];c.goalName=c.goalName||'Pizza party';c.goalIcon=c.goalIcon||'🍕';c.tlog=c.tlog||[]})}
+function norm(){S.incidents=S.incidents||[];S.bad=S.bad||BAD;S.deds=S.deds||DEDS;S.htasks=S.htasks||HT;S.reds=S.reds||[];if(typeof S.starHour!=='number')S.starHour=8;Object.keys(S.classes).forEach(function(k){var c=S.classes[k];c.goalName=c.goalName||'Pizza party';c.goalIcon=c.goalIcon||'🍕';c.tlog=c.tlog||[];c.starNotes=c.starNotes||{};c.helpers=c.helpers||[]})}
 norm();
 function C(){return S.classes[S.cur]}
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -94,31 +108,75 @@ function starCard(){
  }else h+='<p class="mute" style="margin:6px 0 0">No points yet this week.</p>';
  h+='<div class="mute" style="margin-top:6px">'+(locked?'Locked since Thursday '+hourLabel()+'. A new week starts on Sunday.':'Counts points from Sunday until Thursday '+hourLabel()+', then locks.')+'</div>';
  if(pr.length)h+='<div class="mute">Last week’s star: '+starNames(pr)+' ('+pr[0].p+')</div>';
+ var nt=c.starNotes[ws];if(r.length&&nt)h+='<div style="margin-top:6px">“'+esc(nt)+'”</div>';
+ h+='<p style="margin:10px 0 0"><button class="btn pri" data-t="star">🌟 Show to class</button></p>';
  return h+'</div>';
 }
 
 function render(){
- var tabs=[['board','📊 Board'],['students','🧑‍🎓 Students'],['teams','👥 Teams'],['shop','🎁 Gift shop'],['reds','📋 Redemptions'],['bad','⚠️ Behaviour log'],['settings','⚙️ Settings']];
+ var tabs=[['board','📊 Board'],['star','🌟 Star of the week'],['students','🧑‍🎓 Students'],['teams','👥 Teams'],['helper','🙋 Class helper'],['shop','🎁 Gift shop'],['reds','📋 Redemptions'],['bad','⚠️ Behaviour log'],['settings','⚙️ Settings']];
  document.getElementById('seg').innerHTML=Object.keys(S.classes).map(function(c){return '<button data-c="'+c+'" class="'+(S.cur===c?'on':'')+'">'+c+'</button>'}).join('');
  var pend=S.reds.filter(function(r){return r.cls===S.cur&&r.status==='Pending'}).length;
  document.getElementById('nav').innerHTML=tabs.map(function(t){return '<button data-t="'+t[0]+'" class="'+(tab===t[0]?'on':'')+'">'+t[1]+(t[0]==='reds'&&pend?' ('+pend+')':'')+'</button>'}).join('');
- document.getElementById('view').innerHTML=({board:vBoard,students:vStudents,teams:vTeams,shop:vShop,reds:vReds,bad:vBad,settings:vSettings})[tab]();
+ document.getElementById('view').innerHTML=({board:vBoard,star:vStar,students:vStudents,teams:vTeams,helper:vHelper,shop:vShop,reds:vReds,bad:vBad,settings:vSettings})[tab]();
  if(tab==='settings')bindSettings();
 }
 
 function vBoard(){
- var c=C(),t=total(),pct=Math.min(100,Math.round(t/c.goal*100));
+ var c=C(),t=total(),pct=Math.max(0,Math.min(100,Math.round(t/c.goal*100)));
  var ts=c.teams.map(function(n,i){return{n:n,p:tpts(i),m:tmem(i).length}}).sort(function(a,b){return b.p-a.p});
  var mx=Math.max(1,ts.length?ts[0].p:1);
  var top=c.students.slice().sort(function(a,b){return b.earned-a.earned}).slice(0,5).filter(function(s){return s.earned>0});
  var medals=['🥇','🥈','🥉','',''];
  return '<div class="card"><div class="row"><b>'+esc(c.goalIcon)+' '+S.cur+' · '+esc(c.goalName)+'</b><span class="big">'+t+' / '+c.goal+'</span></div><div class="bar" style="height:18px"><i style="width:'+pct+'%"></i></div>'+(t>=c.goal?'<p>🎉 Goal reached! Time for the '+esc(c.goalName)+'!</p>':'<p class="mute" style="margin:6px 0 0">'+(c.goal-t)+' points to go</p>')+'</div>'
- +starCard()+'<div class="two"><div><h2>Team ranking</h2><div class="rank">'+ts.map(function(x,i){return '<div class="card"><div class="row"><b>'+(medals[i]||'')+' '+esc(x.n)+'</b><span class="big">'+x.p+'</span></div><div class="mute">'+x.m+' members</div><div class="bar"><i style="width:'+Math.round(x.p/mx*100)+'%"></i></div></div>'}).join('')+'</div></div>'
+ +starCard()+'<div class="two"><div><h2>Team ranking</h2><div class="rank">'+ts.map(function(x,i){return '<div class="card"><div class="row"><b>'+(medals[i]||'')+' '+esc(x.n)+'</b><span class="big">'+x.p+'</span></div><div class="mute">'+x.m+' members</div><div class="bar"><i style="width:'+Math.max(0,Math.round(x.p/mx*100))+'%"></i></div></div>'}).join('')+'</div></div>'
  +'<div><h2>Top 5 students</h2><div class="rank">'+(top.length?top.map(function(s,i){return '<div class="card"><div class="row"><b>'+(i+1)+'. '+esc(s.name)+'</b><span class="big">'+s.earned+'</span></div><div class="mute">'+esc(tname(s))+'</div></div>'}).join(''):'<p class="mute">Award some points to see the leaders.</p>')+'</div></div></div>';
 }
 
 function chips(list,attr,filt){return '<div class="chips">'+list.map(function(a,i){return filt(a)?'<button class="chip" '+attr+'="'+i+'">'+esc(a.l)+' +'+a.p+'</button>':''}).join('')+'</div>'}
 
+function iso(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+var hdate=iso(new Date());
+function dlabel(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})}
+function hent(){return C().helpers.filter(function(x){return x.date===hdate})[0]}
+function hassign(sid,name){var c=C();c.helpers=c.helpers.filter(function(x){return x.date!==hdate});c.helpers.push({date:hdate,sid:sid,name:name,tasks:parse(S.htasks).map(function(p){return{t:p[0],done:false}})})}
+function hpick(){var c=C(),cnt={},cur=hent();c.helpers.forEach(function(x){cnt[x.sid]=(cnt[x.sid]||0)+1});
+ var pool=c.students.filter(function(s){return !cur||s.id!==cur.sid});if(!pool.length)return null;
+ var m=Math.min.apply(null,pool.map(function(s){return cnt[s.id]||0}));var cand=pool.filter(function(s){return (cnt[s.id]||0)===m});return cand[Math.floor(Math.random()*cand.length)]}
+function vHelper(){
+ var c=C(),e=hent(),cnt={};
+ c.helpers.forEach(function(x){cnt[x.sid]=(cnt[x.sid]||0)+1});
+ var h='<div class="row"><b>Day</b><span><input type="date" id="hd" value="'+hdate+'" style="width:auto"> <button class="btn" data-hgo="'+iso(new Date())+'">Today</button></span></div>';
+ if(e){var dn=e.tasks.filter(function(x){return x.done}).length;
+  h+='<div class="card" style="margin-top:10px"><div class="row"><b class="big">🙋 '+esc(e.name)+'</b><span class="mute">'+esc(dlabel(hdate))+' · '+dn+'/'+e.tasks.length+' tasks done</span></div><div class="rank" style="margin-top:10px">'
+   +e.tasks.map(function(k,i){return '<div class="row"><label><input type="checkbox" data-ht="'+i+'"'+(k.done?' checked':'')+' style="width:auto"> '+esc(k.t)+'</label><button class="btn" data-htd="'+i+'" title="Remove task">✕</button></div>'}).join('')+'</div>'
+   +'<div class="row" style="margin-top:10px"><input id="htn" placeholder="Add a task for this day" style="flex:1;min-width:160px"><button class="btn" data-hta="1">＋ Add task</button></div>'
+   +'<div style="margin-top:10px"><button class="btn" data-hrand="1">🎲 Pick someone else</button> <button class="btn" data-hrem="1">Remove helper</button></div></div>';
+ }else h+='<div class="card" style="margin-top:10px"><b>No helper chosen for '+esc(dlabel(hdate))+'</b><p class="mute">The random pick favours students who have been helper the fewest times.</p><button class="btn pri" data-hrand="1">🎲 Pick fairly at random</button></div>';
+ h+='<div class="card" style="margin-top:10px"><b>Or choose manually</b><p style="margin:8px 0 0"><select data-hsel="1" style="width:100%"><option value="">Select a student…</option>'+c.students.map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+(cnt[s.id]?' ('+cnt[s.id]+')':'')+'</option>'}).join('')+'</select></p></div>';
+ var pend=S.reds.filter(function(r){return r.cls===S.cur&&r.status==='Pending'&&/helper/i.test(r.item)});
+ if(pend.length)h+='<h2>Bought “Teacher’s helper”</h2><div class="rank">'+pend.map(function(r){return '<div class="card"><div class="row"><span><b>'+esc(r.sname)+'</b>'+(r.sched?' <span class="mute">· scheduled '+esc(r.sched)+'</span>':'')+'</span><button class="btn" data-hr="'+r.id+'">Make helper on '+esc(dlabel(hdate))+'</button></div></div>'}).join('')+'</div>';
+ var fair=c.students.slice().sort(function(a,b){return (cnt[a.id]||0)-(cnt[b.id]||0)||a.name.localeCompare(b.name)});
+ h+='<h2>Turns so far (fewest first)</h2><div class="chips">'+fair.map(function(s){return '<span class="tag">'+esc(s.name)+' · '+(cnt[s.id]||0)+'</span>'}).join('')+'</div>';
+ var hist=c.helpers.slice().sort(function(a,b){return a.date<b.date?1:-1});
+ return h+'<h2>History</h2>'+(hist.length?'<div class="rank">'+hist.map(function(x){var d2=x.tasks.filter(function(k){return k.done}).length;return '<div class="card"><div class="row"><span><b>'+esc(x.name)+'</b> <span class="mute">· '+esc(dlabel(x.date))+' · '+d2+'/'+x.tasks.length+' tasks</span></span><span><button class="btn" data-hgo="'+x.date+'">Open</button> <button class="btn" data-hdel="'+x.date+'">Delete</button></span></div></div>'}).join('')+'</div>':'<p class="mute">No helpers recorded yet.</p>');
+}
+function deds(){return parse(S.deds).map(function(d){return{l:d[0],p:Math.abs(+d[1])||1}})}
+function dchips(attr){return '<div class="chips">'+deds().map(function(d,i){return '<button class="chip bad" '+attr+'="'+i+'">'+esc(d.l)+' −'+d.p+'</button>'}).join('')+'</div>'}
+function vStar(){
+ var c=C(),now=Date.now(),ws=weekStart(now),co=cutoff(ws),locked=now>=co,r=starRank(c,ws,Math.min(now,co));
+ var note=c.starNotes[ws]||'',emo=['⭐','✨','🌟','🎉','🎊','🏆'],fall='';
+ for(var i=0;i<36;i++)fall+='<span class="fall" style="left:'+Math.round(Math.random()*96)+'%;font-size:'+(16+Math.round(Math.random()*26))+'px;animation-duration:'+(5+Math.random()*7).toFixed(1)+'s;animation-delay:-'+(Math.random()*10).toFixed(1)+'s">'+emo[i%emo.length]+'</span>';
+ var body;
+ if(r.length){var top=r[0].p,n=r.filter(function(x){return x.p===top}).length;
+  body='<div class="mini">'+(locked?'⭐ STAR OF THE WEEK ⭐':'Leading this week so far…')+'</div><div class="sname"><span class="tw">🌟</span> '+starNames(r)+' <span class="tw">🌟</span></div><div class="spts">'+top+' points this week'+(n>1?' · tied!':'')+'</div><div class="snote" id="sc">'+(note?'“'+esc(note)+'”':'')+'</div><div class="mini">'+S.cur+(locked?' · Congratulations! 🎉':'')+'</div>';
+ }else body='<div class="mini">⭐ STAR OF THE WEEK ⭐</div><div class="sname">No star yet</div><div class="spts">Points earned this week will decide it.</div><div class="snote" id="sc"></div>';
+ var pws=weekStart(ws-1),pr=starRank(c,pws,cutoff(pws)),pn=c.starNotes[pws];
+ return '<div class="stage" id="showcase">'+fall+'<div class="sin">'+body+'</div></div>'
+  +'<p><button class="btn pri" data-fs="1">⛶ Full screen</button> <span class="mute">Press Esc to leave full screen.</span></p>'
+  +'<div class="card"><b>Comment for this week’s star</b><p class="mute">It appears on the star screen above and is saved automatically.</p><textarea id="sn" placeholder="e.g. Always helps classmates and works hard in every lesson!">'+esc(note)+'</textarea></div>'
+  +(pr.length?'<p class="mute">Last week’s star: <b>'+starNames(pr)+'</b> ('+pr[0].p+' points)'+(pn?' · “'+esc(pn)+'”':'')+'</p>':'');
+}
 function vStudents(){
  var c=C(),h='',s=sel&&stu(sel);
  if(s){var A=acts(),sh=shop();
@@ -126,6 +184,7 @@ function vStudents(){
   +'<div class="row" style="margin-top:6px"><span class="mute">Team:</span><select data-ts="1"><option value="-1">No team</option>'+c.teams.map(function(n,i){return '<option value="'+i+'"'+(s.team===i?' selected':'')+'>'+esc(n)+'</option>'}).join('')+'</select></div>'
   +'<h2>Behaviour</h2>'+chips(A,'data-aw',function(a){return a.t==='b'})
   +'<h2 style="margin-top:0">Academics</h2>'+chips(A,'data-aw',function(a){return a.t==='a'})
+  +'<h2 style="margin-top:0">Deduct points</h2>'+dchips('data-ded')+'<div class="row" style="margin-bottom:12px"><input id="scn" placeholder="Custom reason (optional)" style="flex:1;min-width:140px"><input id="scp" type="number" min="1" value="1" style="width:80px"><button class="btn" data-sadd="1">＋ Add</button><button class="btn" data-sded="1">− Deduct</button></div>'
   +'<h2 style="margin-top:0">Gift shop</h2><div class="chips">'+sh.map(function(r,i){return '<button class="chip shop" data-buy="'+i+'" '+(bal(s)<r.c?'disabled':'')+'>'+esc(r.l)+' · '+r.c+'</button>'}).join('')+'</div>'
   +'<h2 style="margin-top:0">Behaviour concerns <span class="mute">(log only, no points lost)</span></h2><div class="chips">'+parse(S.bad).map(function(b,i){return '<button class="chip bad" data-bad="'+i+'">'+esc(b[0])+'</button>'}).join('')+'</div>'+recent(s)
   +'<button class="btn" data-undo="1">↩ Undo last</button> <span class="mute">'+(s.log.length?'Last: '+esc(s.log[s.log.length-1].l):'')+'</span></div>';
@@ -148,8 +207,8 @@ function vTeams(){
  if(tsel!==null){var tl=c.tlog.filter(function(x){return x.team===tsel});
   h+='<div class="card" style="margin-top:12px"><b class="big">'+esc(c.teams[tsel])+'</b>'
   +'<h2>Award points to the team</h2><div class="mute">Counts for the team ranking and the class reward, not for any one student.</div>'+chips(acts(),'data-taw',function(){return true})
-  +'<div class="row" style="flex-wrap:nowrap;margin-bottom:12px"><input id="tcn" placeholder="Custom reason (optional)"><input id="tcp" type="number" min="1" value="1" style="width:80px"><button class="btn" data-tcustom="1">Award</button></div>'
-  +'<h2 style="margin-top:0">Or give every member the same points</h2><div class="mute">Each member earns them individually (they can spend them, and they count toward Star of the week).</div>'+chips(acts(),'data-gaw',function(){return true})
+  +'<div class="row" style="flex-wrap:nowrap;margin-bottom:12px"><input id="tcn" placeholder="Custom reason (optional)"><input id="tcp" type="number" min="1" value="1" style="width:80px"><button class="btn" data-tcustom="1">＋ Award</button> <button class="btn" data-tcustom="-1">− Deduct</button></div><h2 style="margin-top:0">Deduct from the team</h2>'+dchips('data-tded')
+  +'<h2 style="margin-top:0">Or give every member the same points</h2><div class="mute">Each member earns them individually (they can spend them, and they count toward Star of the week).</div>'+chips(acts(),'data-gaw',function(){return true})+'<h2 style="margin-top:0">Deduct from every member</h2>'+dchips('data-gded')
   +'<button class="btn" data-tundo="1">↩ Undo last team award</button> <span class="mute">'+(tl.length?'Last: '+esc(tl[tl.length-1].l)+' +'+tl[tl.length-1].p:'')+'</span>'
   +'<div class="mute" style="margin-top:8px">Members: '+(tmem(tsel).map(function(s){return esc(s.name)}).join(', ')||'none yet. Assign students on the Students tab or in Settings.')+'</div></div>'}
  var un=c.students.filter(function(s){return s.team<0}).length;
@@ -177,7 +236,7 @@ function vSettings(){
  +'<div class="card"><b>Star of the week</b><p class="mute">The star is the student with the most points earned from Sunday until Thursday at this hour (0 to 23, e.g. 8 = 8:00 AM). It then locks and resets on Sunday. Applies to both classes.</p><input id="sh" type="number" min="0" max="23" value="'+S.starHour+'"></div>'
  +'<div class="card"><b>Students</b><p class="mute">One per line: Name, team number (optional). Points are kept.</p><textarea id="st">'+esc(c.students.map(function(s){return s.name+(s.team>=0?', '+(s.team+1):'')}).join('\n'))+'</textarea></div>'
  +'<div class="card"><b>Point actions</b><p class="mute">Label | points | b (behaviour) or a (academic)</p><textarea id="ac">'+esc(S.actions)+'</textarea></div>'
- +'<div class="card"><b>Gift shop</b><p class="mute">Item | cost. Up to 10 = Small, 11 to 20 = Medium, 21+ = Big</p><textarea id="sp">'+esc(S.shop)+'</textarea></div><div class="card"><b>Behaviour concerns list</b><p class="mute">One per line. These are log-only and do not remove points.</p><textarea id="bd">'+esc(S.bad)+'</textarea></div><div class="card"><b>Backup</b><p class="mute">Export saves everything (both classes) to a file. Import replaces all current data with a backup file.</p><button class="btn" id="ex">⬇ Export backup</button> <button class="btn" id="im">⬆ Import backup</button><input type="file" id="imf" accept=".json,application/json" style="display:none"></div></div>'
+ +'<div class="card"><b>Gift shop</b><p class="mute">Item | cost. Up to 10 = Small, 11 to 20 = Medium, 21+ = Big</p><textarea id="sp">'+esc(S.shop)+'</textarea></div><div class="card"><b>Class helper tasks</b><p class="mute">One task per line. They are added to each new helper, and you can change them for any day.</p><textarea id="ht">'+esc(S.htasks)+'</textarea></div><div class="card"><b>Point deductions</b><p class="mute">Label | points to remove. Each tap removes these points from a student or team.</p><textarea id="dd">'+esc(S.deds)+'</textarea></div><div class="card"><b>Behaviour concerns list</b><p class="mute">One per line. These are log-only and do not remove points.</p><textarea id="bd">'+esc(S.bad)+'</textarea></div><div class="card"><b>Backup</b><p class="mute">Export saves everything (both classes) to a file. Import replaces all current data with a backup file.</p><button class="btn" id="ex">⬇ Export backup</button> <button class="btn" id="im">⬆ Import backup</button><input type="file" id="imf" accept=".json,application/json" style="display:none"></div></div>'
  +'<p><button class="btn pri" id="sv">Save settings</button> <button class="btn" id="rs">Reset '+S.cur+' points</button></p><p class="mute">Data is saved in this browser on this device.</p>';
 }
 function applySettings(){
@@ -187,7 +246,7 @@ function applySettings(){
  c.goalName=document.getElementById('gn').value.trim()||'Class reward';
  c.goalIcon=document.getElementById('gi').value.trim()||'🎁';
  var sh=parseInt(document.getElementById('sh').value,10);S.starHour=(sh>=0&&sh<=23)?sh:8;
- S.actions=document.getElementById('ac').value;S.shop=document.getElementById('sp').value;S.bad=document.getElementById('bd').value;
+ S.actions=document.getElementById('ac').value;S.shop=document.getElementById('sp').value;S.bad=document.getElementById('bd').value;S.deds=document.getElementById('dd').value;S.htasks=document.getElementById('ht').value;
  var old=c.students,ns=[];
  document.getElementById('st').value.split('\n').forEach(function(l,i){var p=l.split(',');var n=p[0].trim();if(!n)return;var tm=parseInt(p[1],10);tm=(tm>=1&&tm<=c.teams.length)?tm-1:-1;
   var e=old.filter(function(s){return s.name===n})[0];
@@ -207,7 +266,7 @@ function bindSettings(){
 
 function red(id){return S.reds.filter(function(r){return r.id===+id})[0]}
 document.addEventListener('click',function(e){
- var el=e.target.closest('[data-c],[data-t],[data-s],[data-g],[data-aw],[data-gaw],[data-buy],[data-undo],[data-done],[data-reopen],[data-bad],[data-delinc],[data-addteam],[data-rmteam],[data-taw],[data-tcustom],[data-tundo]');if(!el)return;
+ var el=e.target.closest('[data-c],[data-t],[data-s],[data-g],[data-aw],[data-gaw],[data-buy],[data-undo],[data-done],[data-reopen],[data-bad],[data-delinc],[data-addteam],[data-rmteam],[data-taw],[data-tcustom],[data-tundo],[data-ded],[data-sadd],[data-sded],[data-tded],[data-gded],[data-fs],[data-ht],[data-htd],[data-hta],[data-hrand],[data-hrem],[data-hr],[data-hdel],[data-hgo]');if(!el)return;
  var d=el.dataset,s=sel&&stu(sel),A=acts();
  if(d.c){S.cur=d.c;sel=null;tsel=null;save();render()}
  else if(d.t){tab=d.t;render()}
@@ -219,8 +278,21 @@ document.addEventListener('click',function(e){
  else if(d.undo&&s&&s.log.length){var l=s.log.pop();if(l.t==='e')s.earned-=l.p;else{s.spent-=l.p;S.reds=S.reds.filter(function(x){return x.id!==l.rid})}save();toast('Undone');render()}
  else if(d.bad!==undefined&&s){var ty=parse(S.bad)[+d.bad][0],note=prompt('Add a note (optional):','');if(note===null)return;S.incidents.push({id:Date.now(),cls:S.cur,sid:s.id,sname:s.name,type:ty,note:note.trim(),date:new Date().toLocaleDateString()});save();toast('Logged: '+ty+' ('+s.name+')');render()}
  else if(d.delinc){if(confirm('Delete this entry?')){S.incidents=S.incidents.filter(function(x){return x.id!==+d.delinc});save();render()}}
+ else if(d.ded!==undefined&&s){var dd=deds()[+d.ded];earn(s,'Deduction: '+dd.l,-dd.p);save();toast('−'+dd.p+' for '+s.name);render()}
+ else if((d.sadd||d.sded)&&s){var sp=parseInt(document.getElementById('scp').value,10);if(!(sp>0)){toast('Enter points above 0');return}var sn=document.getElementById('scn').value.trim(),sgn=d.sded?-1:1;earn(s,sn||(sgn<0?'Deduction':'Custom award'),sgn*sp);save();toast((sgn<0?'−':'+')+sp+' for '+s.name);render()}
+ else if(d.tded!==undefined&&tsel!==null){var td=deds()[+d.tded];C().tlog.push({team:tsel,l:'Deduction: '+td.l,p:-td.p,ts:Date.now()});save();toast('−'+td.p+' for '+C().teams[tsel]);render()}
+ else if(d.gded!==undefined&&tsel!==null){var gd=deds()[+d.gded];tmem(tsel).forEach(function(x){earn(x,'Team deduction: '+gd.l,-gd.p)});save();toast('−'+gd.p+' each for '+C().teams[tsel]);render()}
+ else if(d.fs){var el2=document.getElementById('showcase');try{if(document.fullscreenElement)document.exitFullscreen();else el2.requestFullscreen()}catch(e){toast('Full screen is not available')}}
+ else if(d.ht!==undefined){var e1=hent();if(e1){var tk=e1.tasks[+d.ht];tk.done=!tk.done;save();render()}}
+ else if(d.htd!==undefined){var e2=hent();if(e2){e2.tasks.splice(+d.htd,1);save();render()}}
+ else if(d.hta){var e3=hent(),tv=document.getElementById('htn').value.trim();if(e3&&tv){e3.tasks.push({t:tv,done:false});save();render()}}
+ else if(d.hrand){var pk=hpick();if(pk){hassign(pk.id,pk.name);save();render()}else toast('Add students first')}
+ else if(d.hrem){C().helpers=C().helpers.filter(function(x){return x.date!==hdate});save();render()}
+ else if(d.hr){var rr=red(d.hr);if(rr){hassign(rr.sid,rr.sname);rr.sched=hdate;save();render()}}
+ else if(d.hdel){if(confirm('Delete this entry?')){C().helpers=C().helpers.filter(function(x){return x.date!==d.hdel});save();render()}}
+ else if(d.hgo){hdate=d.hgo;render()}
  else if(d.taw!==undefined&&tsel!==null){var ta=A[+d.taw];C().tlog.push({team:tsel,l:ta.l,p:ta.p,ts:Date.now()});save();toast('+'+ta.p+' for '+C().teams[tsel]);render()}
- else if(d.tcustom&&tsel!==null){var cp=parseInt(document.getElementById('tcp').value,10);if(!(cp>0)){toast('Enter points above 0');return}var cn=document.getElementById('tcn').value.trim();C().tlog.push({team:tsel,l:cn||'Team award',p:cp,ts:Date.now()});save();toast('+'+cp+' for '+C().teams[tsel]);render()}
+ else if(d.tcustom&&tsel!==null){var cp=parseInt(document.getElementById('tcp').value,10);if(!(cp>0)){toast('Enter points above 0');return}var sg=+d.tcustom,cn=document.getElementById('tcn').value.trim();C().tlog.push({team:tsel,l:cn||(sg<0?'Team deduction':'Team award'),p:sg*cp,ts:Date.now()});save();toast((sg<0?'−':'+')+cp+' for '+C().teams[tsel]);render()}
  else if(d.tundo&&tsel!==null){var tl2=C().tlog;for(var k=tl2.length-1;k>=0;k--){if(tl2[k].team===tsel){tl2.splice(k,1);break}}save();toast('Undone');render()}
  else if(d.addteam){applySettings();var c=C();c.teams.push('Team '+(c.teams.length+1));save();render()}
  else if(d.rmteam!==undefined){applySettings();save();var c2=C(),ti=+d.rmteam;if(c2.teams.length<2)return;if(confirm('Remove "'+c2.teams[ti]+'"? Its members become unassigned.')){c2.teams.splice(ti,1);c2.students.forEach(function(x){if(x.team===ti)x.team=-1;else if(x.team>ti)x.team-=1});c2.tlog=c2.tlog.filter(function(x){return x.team!==ti}).map(function(x){if(x.team>ti)x.team-=1;return x});tsel=null;save();render()}}
@@ -230,9 +302,12 @@ document.addEventListener('click',function(e){
 document.addEventListener('change',function(e){
  var t=e.target;
  if(t.dataset.ts!==undefined&&sel){stu(sel).team=+t.value;save();render()}
+ else if(t.id==='hd'){hdate=t.value||iso(new Date());render()}
+ else if(t.dataset.hsel!==undefined){if(t.value){var sx=stu(t.value);hassign(sx.id,sx.name);save();render()}}
  else if(t.dataset.bf!==undefined){bsel=t.value;render()}
  else if(t.dataset.sched){red(t.dataset.sched).sched=t.value;save()}
 });
+document.addEventListener('input',function(e){if(e.target.id==='sn'){var v=e.target.value;C().starNotes[weekStart(Date.now())]=v;save();var sc=document.getElementById('sc');if(sc)sc.textContent=v.trim()?'“'+v.trim()+'”':''}});
 document.getElementById('theme').onclick=function(){var r=document.documentElement,dark=getComputedStyle(r).getPropertyValue('--bg').trim()==='#14161c';r.setAttribute('data-theme',dark?'light':'dark')};
 render();
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){navigator.serviceWorker.register('sw.js').catch(function(){})}
